@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwritten Digit Recognition | Canvas AI Classifier</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Background Ambient Glow -->
+    <div class="app-background">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <!-- Application Header -->
+        <header class="app-header">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <h1 class="app-title">Handwritten Digit Recognition</h1>
+                    <p class="app-subtitle">Draw a digit (0–9) on the interactive canvas to predict</p>
+                </div>
+            </div>
+            <div class="status-badge" id="statusBadge">
+                <span class="status-dot"></span>
+                <span id="statusText">Model Ready</span>
+            </div>
+        </header>
+
+        <!-- Main Content Dashboard -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Card: Interactive Canvas Drawing Area -->
+            <section class="card input-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-pen-nib"></i> Drawing Canvas</h2>
+                    <span class="instruction-badge">Draw a single digit (0-9)</span>
+                </div>
+
+                <div class="canvas-wrapper">
+                    <canvas id="digitCanvas" width="280" height="280"></canvas>
+                    <div class="canvas-watermark" id="canvasWatermark">Draw digit (0–9) here</div>
+                </div>
+
+                <!-- Canvas Controls Toolbar -->
+                <div class="controls-toolbar">
+                    <div class="brush-size-group">
+                        <label for="brushSize"><i class="fa-solid fa-paintbrush"></i> Stroke:</label>
+                        <input type="range" id="brushSize" min="14" max="36" value="22" oninput="updateBrushPreview()">
+                        <span id="brushSizeValue">22px</span>
+                    </div>
+
+                    <div class="tool-btn-group">
+                        <button class="tool-btn danger" onclick="clearCanvas()" title="Clear Canvas">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                        <button class="tool-btn secondary" id="eraserBtn" onclick="toggleEraser()" title="Eraser">
+                            <i class="fa-solid fa-eraser"></i> Eraser
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="action-bar">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoPredictToggle" checked>
+                        <span class="slider"></span>
+                        <span class="label-text">Auto-predict on draw</span>
+                    </label>
+
+                    <button class="primary-btn" id="predictDrawBtn" onclick="predictCanvas()">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Predict Canvas
+                    </button>
+                </div>
+
+                <!-- Quick Test Preset Digits Bar -->
+                <div class="quick-test-section">
+                    <span class="quick-test-title"><i class="fa-solid fa-bolt"></i> Test Preset Digits:</span>
+                    <div class="preset-digits-grid">
+                        <button class="preset-btn" onclick="loadSampleDigit(0)">0</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(1)">1</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(2)">2</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(3)">3</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(4)">4</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(5)">5</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(6)">6</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(7)">7</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(8)">8</button>
+                        <button class="preset-btn" onclick="loadSampleDigit(9)">9</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Card: Prediction Result & Analysis Display -->
+            <section class="card results-card">
+                <h2 class="section-title"><i class="fa-solid fa-chart-column"></i> Prediction Result</h2>
+
+                <!-- Main Digit & Confidence Banner -->
+                <div class="main-result-container" id="mainResultContainer">
+                    <div class="predicted-digit-box">
+                        <span class="digit-label">PREDICTED DIGIT</span>
+                        <div class="digit-display" id="predictedDigitDisplay">?</div>
+                    </div>
+
+                    <div class="result-details">
+                        <div class="confidence-pill" id="confidencePill">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span id="confidenceText">Confidence: --%</span>
+                        </div>
+
+                        <!-- Processed 28x28 Input Thumbnail -->
+                        <div class="nn-view-container">
+                            <span class="nn-view-label">MNIST Input (28x28)</span>
+                            <div class="nn-thumbnail-wrapper">
+                                <img id="nnInputThumbnail" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><rect width='28' height='28' fill='%231e293b'/></svg>" alt="NN Input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Probability Bar Chart -->
+                <div class="chart-container">
+                    <h3 class="chart-title">Probability Breakdown (0 – 9)</h3>
+                    <div class="probability-bars-list" id="probabilityBarsList">
+                        <!-- Rendered dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Top 3 Candidates -->
+                <div class="top3-container" id="top3Container">
+                    <span class="top3-title"><i class="fa-solid fa-ranking-star"></i> Top 3 Candidates:</span>
+                    <div class="top3-badges" id="top3Badges">
+                        <span class="top3-pill">Draw a digit on the canvas to predict</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="app-footer">
+            <p>Handwritten Digit Recognition Web App | Powered by MNIST Model & Flask</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Interactivity -->
+    <script>
+        let canvas, ctx;
+        let isDrawing = false;
+        let isEraser = false;
+        let hasDrawn = false;
+        let drawTimeout = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initCanvas();
+            renderEmptyProbabilityBars();
+        });
+
+        // Initialize HTML5 Canvas
+        function initCanvas() {
+            canvas = document.getElementById('digitCanvas');
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            // Solid black background
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Mouse Events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch Support for Mobile & Tablets
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e.touches[0]); }, {passive: false});
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+            canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, {passive: false});
+        }
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            hasDrawn = true;
+            document.getElementById('canvasWatermark').style.display = 'none';
+            const pos = getCanvasCoordinates(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getCanvasCoordinates(e);
+            const size = document.getElementById('brushSize').value;
+
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = isEraser ? "#000000" : "#FFFFFF";
+
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+
+            // Auto Predict on Draw (Debounced)
+            if (document.getElementById('autoPredictToggle').checked) {
+                clearTimeout(drawTimeout);
+                drawTimeout = setTimeout(predictCanvas, 250);
+            }
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.beginPath();
+                if (document.getElementById('autoPredictToggle').checked) {
+                    predictCanvas();
+                }
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            hasDrawn = false;
+            document.getElementById('canvasWatermark').style.display = 'block';
+            resetResultsDisplay();
+        }
+
+        function toggleEraser() {
+            isEraser = !isEraser;
+            const btn = document.getElementById('eraserBtn');
+            btn.classList.toggle('active-tool', isEraser);
+        }
+
+        function updateBrushPreview() {
+            const val = document.getElementById('brushSize').value;
+            document.getElementById('brushSizeValue').textContent = `${val}px`;
+        }
+
+        function loadSampleDigit(digit) {
+            document.getElementById('canvasWatermark').style.display = 'none';
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "bold 200px Outfit, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(digit.toString(), canvas.width / 2, canvas.height / 2 + 10);
+            hasDrawn = true;
+            predictCanvas();
+        }
+
+        // AJAX Prediction Request
+        async function predictCanvas() {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const hasPixels = imgData.data.some((val, idx) => idx % 4 !== 3 && val > 20);
+            if (!hasPixels) {
+                resetResultsDisplay();
+                return;
+            }
+
+            showLoadingState();
+            const base64Data = canvas.toDataURL('image/png');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Data })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    updatePredictionUI(result);
+                } else {
+                    showErrorState(result.error || "Prediction failed.");
+                }
+            } catch (err) {
+                showErrorState("Network error occurred.");
+            }
+        }
+
+        // UI Updating Functions
+        function showLoadingState() {
+            document.getElementById('predictedDigitDisplay').textContent = "...";
+            document.getElementById('confidenceText').textContent = "Predicting...";
+        }
+
+        function showErrorState(msg) {
+            document.getElementById('predictedDigitDisplay').textContent = "!";
+            document.getElementById('confidenceText').textContent = msg;
+        }
+
+        function updatePredictionUI(data) {
+            // Digit Display with Pop Animation
+            const digitDisplay = document.getElementById('predictedDigitDisplay');
+            digitDisplay.textContent = data.digit;
+            digitDisplay.className = "digit-display pop-anim";
+            setTimeout(() => digitDisplay.classList.remove('pop-anim'), 300);
+
+            // Confidence %
+            document.getElementById('confidenceText').textContent = `Confidence: ${data.confidence}%`;
+
+            // Processed 28x28 Thumbnail
+            if (data.processed_image) {
+                document.getElementById('nnInputThumbnail').src = data.processed_image;
+            }
+
+            // Render Probability Chart & Top 3 Badges
+            if (data.probabilities) renderProbabilityBars(data.probabilities, data.digit);
+            if (data.top3) renderTop3Badges(data.top3);
+        }
+
+        function renderEmptyProbabilityBars() {
+            renderProbabilityBars(Array(10).fill(0), -1);
+        }
+
+        function renderProbabilityBars(probabilities, topDigit) {
+            const container = document.getElementById('probabilityBarsList');
+            container.innerHTML = '';
+
+            probabilities.forEach((prob, digit) => {
+                const isTop = (digit === topDigit);
+                const barRow = document.createElement('div');
+                barRow.className = `prob-row ${isTop ? 'highlight' : ''}`;
+                
+                barRow.innerHTML = `
+                    <span class="digit-idx">${digit}</span>
+                    <div class="bar-track">
+                        <div class="bar-fill ${isTop ? 'top-fill' : ''}" style="width: ${prob}%;"></div>
+                    </div>
+                    <span class="prob-val">${prob.toFixed(1)}%</span>
+                `;
+                container.appendChild(barRow);
+            });
+        }
+
+        function renderTop3Badges(top3) {
+            const container = document.getElementById('top3Badges');
+            container.innerHTML = '';
+
+            top3.forEach((item, idx) => {
+                const pill = document.createElement('span');
+                pill.className = `top3-pill rank-${idx+1}`;
+                pill.innerHTML = `<strong>#${idx+1} Digit ${item.digit}</strong> (${item.probability}%)`;
+                container.appendChild(pill);
+            });
+        }
+
+        function resetResultsDisplay() {
+            document.getElementById('predictedDigitDisplay').textContent = "?";
+            document.getElementById('confidenceText').textContent = "Confidence: --%";
+            document.getElementById('nnInputThumbnail').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><rect width='28' height='28' fill='%231e293b'/></svg>";
+            renderEmptyProbabilityBars();
+            document.getElementById('top3Badges').innerHTML = '<span class="top3-pill">Draw a digit on the canvas to predict</span>';
+        }
+    </script>
+</body>
+</html>
