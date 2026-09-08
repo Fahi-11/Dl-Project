@@ -99,6 +99,7 @@ body {
     align-items: center;
     padding: 18px 28px;
     background: var(--card-bg);
+    -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-lg);
@@ -182,6 +183,7 @@ body {
 /* Glassmorphism Card Container */
 .card {
     background: var(--card-bg);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-lg);
@@ -367,6 +369,7 @@ body {
     color: rgba(255, 255, 255, 0.25);
     pointer-events: none;
     font-weight: 500;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -448,6 +451,7 @@ body {
     align-items: center;
     gap: 10px;
     cursor: pointer;
+    -webkit-user-select: none;
     user-select: none;
 }
 
