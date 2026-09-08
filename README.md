@@ -31,8 +31,8 @@ digit-upload-webapp/
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Fahi-11/digit-upload-webapp.git
-   cd digit-upload-webapp
+   git clone https://github.com/Fahi-11/-digit-upload-webapp.git
+   cd -digit-upload-webapp
    ```
 
 2. Install dependencies:
